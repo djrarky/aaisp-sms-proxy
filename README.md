@@ -93,10 +93,10 @@ AAISP retries webhook delivery on a fixed schedule (~30s, 30s, then longer). The
    # Edit .env with your credentials and tokens
    ```
 
-2. Create the data directory with correct permissions (uid 33 = www-data inside the container):
+2. Create the data directory with correct permissions:
    ```bash
    mkdir -p data
-   sudo chown 33:33 data
+   sudo chown www-data:www-data data
    sudo chmod 750 data
    ```
 
