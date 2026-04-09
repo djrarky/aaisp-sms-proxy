@@ -1,0 +1,16 @@
+services:
+  aaisp-sms-proxy:
+    build: .
+    container_name: aaisp-sms-proxy
+    restart: unless-stopped
+    volumes:
+      - ./config:/var/www/html
+      - ./data:/var/www/data
+    env_file:
+      - .env
+    networks:
+      - docker_default
+
+networks:
+  docker_default:
+    external: true
