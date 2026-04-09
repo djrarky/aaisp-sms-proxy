@@ -8,9 +8,12 @@ $db = new PDO('sqlite:/var/www/data/messages.db');
 $db->exec('CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, da TEXT, oa TEXT, ud TEXT, scts TEXT, received_at TEXT)');
 $db->exec('CREATE TABLE IF NOT EXISTS rate_limit (ip TEXT PRIMARY KEY, count INTEGER, window_start INTEGER)');
 
+// Use X-Forwarded-For (set by Caddy) so rate limiting is per real client, not per proxy IP
+$forwarded = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+$ip        = $forwarded ? trim(explode(',', $forwarded)[0]) : $_SERVER['REMOTE_ADDR'];
+
 // Rate limit: max 10 requests per IP per minute
-$ip  = $_SERVER['REMOTE_ADDR'];
-$now = time();
+$now  = time();
 $stmt = $db->prepare('SELECT count, window_start FROM rate_limit WHERE ip = ?');
 $stmt->execute([$ip]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
