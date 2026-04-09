@@ -1,6 +1,7 @@
 <?php
 try {
     $db = new PDO('sqlite:/var/www/data/messages.db');
+    $db->exec('PRAGMA journal_mode=WAL');
     $db->query('SELECT 1');
     $status = 'ok';
 } catch (Exception $e) {

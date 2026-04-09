@@ -15,6 +15,7 @@ if (!$account || !$push_token || !$push_appid) {
 }
 
 $db = new PDO('sqlite:/var/www/data/messages.db');
+$db->exec('PRAGMA journal_mode=WAL');
 $db->exec('CREATE TABLE IF NOT EXISTS push_tokens (
     account    TEXT PRIMARY KEY,
     selector   TEXT,

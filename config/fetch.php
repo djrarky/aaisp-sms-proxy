@@ -15,6 +15,7 @@ if ($token !== getenv('SMS_TOKEN')) {
 $da_match = '+' . preg_replace('/[^0-9]/', '', $account);
 
 $db = new PDO('sqlite:/var/www/data/messages.db');
+$db->exec('PRAGMA journal_mode=WAL');
 $db->exec('CREATE TABLE IF NOT EXISTS messages (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     da          TEXT,

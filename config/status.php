@@ -5,6 +5,7 @@ if (($_GET['token'] ?? '') !== getenv('SMS_TOKEN')) {
 }
 
 $db = new PDO('sqlite:/var/www/data/messages.db');
+$db->exec('PRAGMA journal_mode=WAL');
 $db->exec('CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, da TEXT, oa TEXT, ud TEXT, scts TEXT, received_at TEXT)');
 $db->exec('CREATE TABLE IF NOT EXISTS rate_limit (ip TEXT PRIMARY KEY, count INTEGER, window_start INTEGER)');
 

@@ -32,7 +32,8 @@ $params = http_build_query([
     "ud"       => $ud,
 ]);
 
-$response = @file_get_contents("https://sms.aa.net.uk/?" . $params);
+$ctx      = stream_context_create(['http' => ['timeout' => 10]]);
+$response = @file_get_contents("https://sms.aa.net.uk/?" . $params, false, $ctx);
 
 if ($response !== false && str_starts_with(trim($response), "OK")) {
     echo "<response><error>0</error><description>Success</description></response>";

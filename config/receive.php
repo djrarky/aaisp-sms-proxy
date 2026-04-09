@@ -17,6 +17,7 @@ if (!$oa || !$da || !$ud) {
 }
 
 $db = new PDO('sqlite:/var/www/data/messages.db');
+$db->exec('PRAGMA journal_mode=WAL');
 $db->exec('CREATE TABLE IF NOT EXISTS messages (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     da          TEXT,
