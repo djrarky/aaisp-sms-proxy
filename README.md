@@ -24,6 +24,13 @@ Settings > Account > Web Services > SMS Fetcher
 | Method | GET |
 | Everything else | leave blank |
 
+Groundwire polls this endpoint automatically. Based on observed behaviour:
+- **Active use**: polls every ~30–60 seconds
+- **Idle**: backs off to ~3 minute intervals
+- **Immediate poll**: opening the Groundwire messages screen triggers a fetch right away
+
+> **Note:** `fetch.php` deletes messages from the database after returning them. Do not call it manually for diagnostics — use `status.php` instead (see below).
+
 ## AAISP Control Panel: Inbound SMS Target
 
 Set the inbound SMS target for each number to:
@@ -49,6 +56,16 @@ https://your-domain.example.com/receive.php?token=YOUR_RECEIVE_TOKEN
 
 4. In the AAISP control panel, set the inbound SMS target for the new number to the receive URL above.
 
+## Checking pending messages (diagnostics)
+
+`status.php` shows messages currently queued in the database without deleting them:
+
+```
+https://your-domain.example.com/status.php?token=YOUR_SMS_TOKEN
+```
+
+Returns a JSON array of up to 20 pending messages. If a message appears here but not in Groundwire, wait for the next poll or open the Groundwire messages screen to trigger one immediately.
+
 ## .env structure
 
 See `.env.example` for the full template.
@@ -68,7 +85,8 @@ Inbound messages are stored in SQLite only until Groundwire fetches them. Once d
 ├── config/
 │   ├── index.php      outbound SMS (Groundwire → AAISP)
 │   ├── receive.php    inbound webhook (AAISP → proxy)
-│   └── fetch.php      message fetcher (Groundwire polls this)
+│   ├── fetch.php      message fetcher (Groundwire polls this — deletes on read)
+│   └── status.php     read-only diagnostic view of pending messages
 └── data/              (not committed — created at runtime)
-    └── messages.db    SQLite message store (messages deleted after delivery to Groundwire)
+    └── messages.db    SQLite message store
 ```
