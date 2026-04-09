@@ -53,6 +53,10 @@ https://your-domain.example.com/receive.php?token=YOUR_RECEIVE_TOKEN
 
 See `.env.example` for the full template.
 
+## Data retention
+
+Inbound messages are stored in SQLite only until Groundwire fetches them. Once delivered, they are deleted automatically. No SMS content is persisted long-term.
+
 ## File layout
 
 ```
@@ -66,5 +70,5 @@ See `.env.example` for the full template.
 │   ├── receive.php    inbound webhook (AAISP → proxy)
 │   └── fetch.php      message fetcher (Groundwire polls this)
 └── data/              (not committed — created at runtime)
-    └── messages.db    SQLite message store
+    └── messages.db    SQLite message store (messages deleted after delivery to Groundwire)
 ```
