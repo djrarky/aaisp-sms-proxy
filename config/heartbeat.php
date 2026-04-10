@@ -1,7 +1,8 @@
 <?php
 // Allow CLI execution (cron) or authenticated HTTP requests
-$is_cli = php_sapi_name() === 'cli';
-if (!$is_cli && ($_GET['token'] ?? '') !== getenv('SMS_TOKEN')) {
+$is_cli    = php_sapi_name() === 'cli';
+$sms_token = getenv('SMS_TOKEN');
+if (!$is_cli && (!$sms_token || ($_GET['token'] ?? '') !== $sms_token)) {
     http_response_code(403);
     exit('Forbidden');
 }
@@ -23,10 +24,12 @@ if ($current_hour < $start_hour || $current_hour >= $end_hour) {
     exit(0);
 }
 
-// Resolve the target account: explicit override, or first AAISP_*_USERNAME in env
+// Resolve the target account: explicit override, or first AAISP_*_USERNAME in env.
+// Use $_ENV rather than getenv() with no args — the latter returns an empty array
+// under Apache SAPI when the 'E' variables_order flag is not set.
 $account = getenv('HEARTBEAT_ACCOUNT') ?: null;
 if (!$account) {
-    foreach (getenv() as $key => $value) {
+    foreach ($_ENV as $key => $value) {
         if (preg_match('/^AAISP_[A-Z0-9_]+_USERNAME$/', $key) && $value) {
             $account = $value;
             break;
