@@ -164,10 +164,12 @@ Rate limited to **10 requests per IP per minute**.
 A `prune.php` script deletes messages older than 14 days as a safety net for any that were never fetched. It is run nightly via cron:
 
 ```
-0 3 * * * docker exec aaisp-sms-proxy php /var/www/html/prune.php >> /home/danny/docker/aaisp-sms-proxy/data/prune.log 2>&1
+0 3 * * * docker exec aaisp-sms-proxy sh -c 'php /var/www/html/prune.php >> /var/www/data/prune.log 2>&1'
 ```
 
 It also clears stale rate_limit entries older than 1 day. Under normal operation, `fetch.php` deletes messages immediately after returning them to Groundwire, so the pruner should rarely find anything to remove.
+
+> **Note on the redirect:** the redirect (`>>`) runs inside the container via `sh -c`, not on the host. The `data/` directory on the host is owned by `www-data:www-data` (mode 750), so a host-side redirect from a cron running as a regular user fails silently — the shell aborts before `docker exec` runs, and nothing executes. Writing inside the container sidesteps this. The log file still appears at `/home/danny/docker/aaisp-sms-proxy/data/prune.log` on the host via the bind mount.
 
 ### Heartbeat
 
@@ -178,8 +180,10 @@ The heartbeat only runs during daytime hours to avoid disturbing you at night. D
 Run via cron at a fixed daytime hour (the script does its own window check as a safety net):
 
 ```
-0 13 * * * docker exec aaisp-sms-proxy php /var/www/html/heartbeat.php >> /home/danny/docker/aaisp-sms-proxy/data/heartbeat.log 2>&1
+0 13 * * * docker exec aaisp-sms-proxy sh -c 'php /var/www/html/heartbeat.php >> /var/www/data/heartbeat.log 2>&1'
 ```
+
+Same `sh -c` pattern as the pruner — see the note above for why the redirect runs inside the container.
 
 The target account is auto-detected from the first `AAISP_*_USERNAME` in the environment. Override with `HEARTBEAT_ACCOUNT=+44XXXXXXXXXX` if needed. A push token must be registered (i.e. Groundwire must have been opened at least once) for the heartbeat to send.
 
