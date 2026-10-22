@@ -78,6 +78,8 @@ Number 1: https://your-domain.example.com/receive.php?token=YOUR_RECEIVE_TOKEN_1
 Number 2: https://your-domain.example.com/receive.php?token=YOUR_RECEIVE_TOKEN_2
 ```
 
+The proxy accepts `RECEIVE_TOKEN`, `RECEIVE_TOKEN_2`, `RECEIVE_TOKEN_3`, and `RECEIVE_TOKEN_4`. Leave unused tokens unset. Separate tokens let you rotate one number's secret independently; they are not bound to particular numbers, and multiple numbers can share a token. The recipient supplied with the SMS determines which account receives it.
+
 > **Important:** Configure this at the per-number level only, not at the account level. Configuring it at both levels causes AAISP to deliver each message twice, resulting in duplicate push notifications.
 
 AAISP retries webhook delivery on a fixed schedule (~30s, 30s, then longer). The proxy deduplicates by checking for identical sender, recipient, and message content within a 2-minute window, so retries are silently discarded.
@@ -88,18 +90,18 @@ AAISP retries webhook delivery on a fixed schedule (~30s, 30s, then longer). The
 
 1. Clone the repo and copy the env file:
    ```bash
-   git clone git@github.com:dannymcc/aaisp-sms-proxy.git
+   git clone git@github.com:djrarky/aaisp-sms-proxy.git
    cd aaisp-sms-proxy
    cp .env.example .env
    # Edit .env with your credentials and tokens
    ```
 
-2. Create the data directory with correct permissions:
+2. Create the data directory:
    ```bash
    mkdir -p data
-   sudo chown www-data:www-data data
-   sudo chmod 750 data
    ```
+
+   On normal Apache startup, the container assigns the data directory and its contents to `www-data` and ensures the owner can write, the group can read, and other users have no access. This also changes permissions on the host directory mounted at `/var/www/data`. Application code mounted at `/var/www/html` keeps its existing ownership and must be readable by Apache. If you override the container to run as a non-root user, prepare the data directory permissions yourself.
 
 3. Build and start:
    ```bash
@@ -111,6 +113,19 @@ AAISP retries webhook delivery on a fixed schedule (~30s, 30s, then longer). The
 5. Open Groundwire to trigger push token registration, then send a test SMS.
 
 > The container has `restart: unless-stopped` so it will recover automatically from crashes and host reboots. The SQLite tables are created automatically on first use. Push tokens are re-registered by Groundwire the next time the app is opened.
+
+### Updating a deployment using the published image
+
+For a Compose deployment using `image: ghcr.io/djrarky/aaisp-sms-proxy`, update the host copies of `config/` and `apache.conf` as well as pulling the image: these files are bind-mounted, so pulling an image alone does not update them. After the new image has been published and the mounted files updated, run from your Compose project directory:
+
+```bash
+docker compose pull
+docker compose up -d --force-recreate
+```
+
+The logging fix requires the rebuilt image because it changes Apache's default virtual host. The image also includes the log-format configuration as a default for deployments without an `apache.conf` mount.
+
+An existing external network such as `user-bridge`, with `expose: [80]` and a reverse proxy attached to the same network, needs no networking changes. No host port needs to be published. Keep any existing `:Z` SELinux mount labels; the startup permission setup does not replace them.
 
 ---
 
@@ -146,6 +161,19 @@ https://your-domain.example.com/health.php
 ```
 
 Returns `{"status":"ok"}` (HTTP 200) when healthy, or `{"status":"error"}` (HTTP 500) if the database is unreachable. Suitable for use with uptime monitors.
+
+Optionally add this under the `aaisp-sms-proxy` service in your Compose file to show Docker health status:
+
+```yaml
+healthcheck:
+  test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1/health.php"]
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 15s
+```
+
+This checks Apache and SQLite through the existing endpoint, using Apache's database permissions. It does not send an SMS or automatically restart an unhealthy container.
 
 ### Checking pending messages
 
@@ -189,7 +217,7 @@ The target account is auto-detected from the first `AAISP_*_USERNAME` in the env
 
 ### Apache log sanitisation
 
-The container mounts a custom Apache log format that strips query strings from access logs. This prevents tokens from appearing in log output. The format logs the request path (`%U`) without the query string, keeping everything else (IP, method, status, etc.) intact.
+The image configures Apache's default virtual host to use a custom log format that strips query strings from request URLs in access logs. Defining the format alone is insufficient because the virtual host has its own logging directive. The format logs the request path (`%U`) without the query string, keeping everything else (IP, method, status, etc.) intact. Reverse-proxy logs are configured separately.
 
 ---
 
@@ -210,6 +238,7 @@ Inbound messages are stored in SQLite only until Groundwire fetches them. Once d
 ```
 /
 ├── Dockerfile
+├── docker-entrypoint.sh    prepares data ownership and permissions before Apache starts
 ├── docker-compose.yml
 ├── apache.conf             custom log format (strips query strings from access logs)
 ├── php.ini                 disables display_errors, enables error logging
